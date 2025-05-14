@@ -4,21 +4,46 @@ interface CurlRequest {
   curl: string;
 }
 
+// Handle OPTIONS requests (for CORS preflight)
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    },
+  });
+}
+
 export async function POST(request: Request) {
   try {
+    // Add CORS headers
+    const headers = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    };
+
     // Parse the request body
     const body: CurlRequest = await request.json();
     const curlCommand = body.curl;
 
     if (!curlCommand) {
-      return NextResponse.json({ error: "No curl command provided" }, { status: 400 });
+      return NextResponse.json({ error: "No curl command provided" }, { 
+        status: 400,
+        headers
+      });
     }
 
     // Parse the curl command
     const parsedCommand = parseCurlCommand(curlCommand);
     
     if (!parsedCommand) {
-      return NextResponse.json({ error: "Failed to parse curl command" }, { status: 400 });
+      return NextResponse.json({ error: "Failed to parse curl command" }, { 
+        status: 400,
+        headers
+      });
     }
 
     // Execute the request
@@ -44,10 +69,20 @@ export async function POST(request: Request) {
       statusText: response.statusText,
       headers: Object.fromEntries(response.headers.entries()),
       data: responseData,
-    });
+    }, { headers });
   } catch (error) {
     console.error("Error executing curl command:", error);
-    return NextResponse.json({ error: "Failed to execute request", details: String(error) }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to execute request", details: String(error) }, 
+      { 
+        status: 500,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        }
+      }
+    );
   }
 }
 
