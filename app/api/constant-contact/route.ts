@@ -32,11 +32,10 @@ export async function POST(request: Request) {
   try {
     // Get the authorization token from environment variables
     const accessToken = process.env.CONSTANT_CONTACT_ACCESS_TOKEN
-    const refreshToken = process.env.CONSTANT_CONTACT_REFRESH_TOKEN
     const clientId = process.env.CONSTANT_CONTACT_CLIENT_ID
     const clientSecret = process.env.CONSTANT_CONTACT_CLIENT_SECRET
 
-    if (!accessToken || !refreshToken || !clientId || !clientSecret) {
+    if (!accessToken || !clientId || !clientSecret) {
       return NextResponse.json({ error: "Authorization credentials not configured" }, { status: 500 })
     }
 
@@ -73,17 +72,12 @@ export async function POST(request: Request) {
     // First attempt with current access token
     response = await makeConstantContactRequest(payload, authToken);
     
-    // If unauthorized, try refreshing the token
+    // If unauthorized, we can't refresh without a refresh token
     if (response.status === 401) {
-      const newTokens = await refreshAccessToken(refreshToken, clientId, clientSecret);
-      if (newTokens && newTokens.access_token) {
-        // Try again with new token
-        authToken = newTokens.access_token;
-        response = await makeConstantContactRequest(payload, authToken);
-        
-        // Here you would also want to store the new tokens somewhere
-        // This depends on your architecture (database, etc.)
-      }
+      return NextResponse.json({ 
+        error: "Authorization failed", 
+        message: "The access token has expired. Please obtain a new access token."
+      }, { status: 401 });
     }
 
     // Get the response data
@@ -118,13 +112,13 @@ async function makeConstantContactRequest(payload: ContactPayload, authToken: st
   });
 }
 
-async function refreshAccessToken(refreshToken: string, clientId: string, clientSecret: string): Promise<TokenResponse | null> {
+async function refreshAccessToken(accessToken: string, clientId: string, clientSecret: string): Promise<TokenResponse | null> {
   try {
     const tokenEndpoint = "https://authz.constantcontact.com/oauth2/default/v1/token";
     
     const params = new URLSearchParams();
     params.append('grant_type', 'refresh_token');
-    params.append('refresh_token', refreshToken);
+    params.append('refresh_token', accessToken);
     
     const response = await fetch(tokenEndpoint, {
       method: 'POST',
