@@ -95,8 +95,8 @@ interface ParsedCommand {
 
 function parseCurlCommand(curlCommand: string): ParsedCommand | null {
   try {
-    // Extract URL
-    const urlMatch = curlCommand.match(/curl\s+['"]?([^'">\s]+)['"]?/);
+    // Extract URL - look specifically for http/https URLs
+    const urlMatch = curlCommand.match(/(https?:\/\/[^\s"']+)/);
     if (!urlMatch) return null;
     const url = urlMatch[1];
 
@@ -113,7 +113,7 @@ function parseCurlCommand(curlCommand: string): ParsedCommand | null {
 
     // Extract headers
     const headers: Record<string, string> = {};
-    const headerMatches = curlCommand.matchAll(/-H\s+['"]([^:]+):\s*([^'"]+)['"]|--header\s+['"]([^:]+):\s*([^'"]+)['"]/g);
+    const headerMatches = curlCommand.matchAll(/-H\s+["']([^:]+):\s*([^"']+)["']|--header\s+["']([^:]+):\s*([^"']+)["']/g);
     
     for (const match of headerMatches) {
       const key = match[1] || match[3];
@@ -123,7 +123,7 @@ function parseCurlCommand(curlCommand: string): ParsedCommand | null {
 
     // Extract body
     let body: string | undefined;
-    const dataMatch = curlCommand.match(/-d\s+['"](.+?)['"]|--data\s+['"](.+?)['"]/);
+    const dataMatch = curlCommand.match(/-d\s+["'](.+?)["']|--data\s+["'](.+?)["']/);
     if (dataMatch) {
       body = dataMatch[1] || dataMatch[2];
       
