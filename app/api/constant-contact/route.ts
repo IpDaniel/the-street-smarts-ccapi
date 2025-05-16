@@ -29,6 +29,18 @@ interface TokenResponse {
 }
 
 export async function POST(request: Request) {
+  // Add CORS headers
+  const headers = {
+    'Access-Control-Allow-Origin': '*', // Or specify your Webflow domain
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
+  
+  // Handle OPTIONS request (preflight)
+  if (request.method === 'OPTIONS') {
+    return new NextResponse(null, { status: 204, headers });
+  }
+  
   try {
     // Get the authorization token from environment variables
     const accessToken = process.env.CONSTANT_CONTACT_ACCESS_TOKEN
@@ -90,11 +102,11 @@ export async function POST(request: Request) {
         status: response.status,
         data: responseData,
       },
-      { status: response.status },
+      { status: response.status, headers },
     )
   } catch (error) {
     console.error("Error relaying to Constant Contact:", error)
-    return NextResponse.json({ error: "Failed to relay request to Constant Contact" }, { status: 500 })
+    return NextResponse.json({ error: "Failed to relay request to Constant Contact" }, { status: 500, headers })
   }
 }
 
