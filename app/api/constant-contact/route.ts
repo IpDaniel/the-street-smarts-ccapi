@@ -3,6 +3,23 @@ import { NextResponse } from "next/server"
 // Constant Contact API endpoint
 const CONSTANT_CONTACT_API_URL = "https://api.cc.email/v3/contacts"
 
+// CORS headers - be specific about your Webflow domain
+const corsHeaders = {
+  'Access-Control-Allow-Origin': 'https://www.thestreetsmarts.org', // Your Webflow domain
+  // Or use '*' for all origins (less secure): 'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, Cache-Control',
+  'Access-Control-Allow-Credentials': 'true',
+};
+
+// Handle OPTIONS requests (preflight)
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: corsHeaders,
+  });
+}
+
 // Define types for our payloads and responses
 interface ContactPayload {
   email_address: {
@@ -29,18 +46,6 @@ interface TokenResponse {
 }
 
 export async function POST(request: Request) {
-  // Add CORS headers
-  const headers = {
-    'Access-Control-Allow-Origin': '*', // Or specify your Webflow domain
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  };
-  
-  // Handle OPTIONS request (preflight)
-  if (request.method === 'OPTIONS') {
-    return new NextResponse(null, { status: 204, headers });
-  }
-  
   try {
     // Get the authorization token from environment variables
     const accessToken = process.env.CONSTANT_CONTACT_ACCESS_TOKEN
@@ -48,7 +53,10 @@ export async function POST(request: Request) {
     const clientSecret = process.env.CONSTANT_CONTACT_CLIENT_SECRET
 
     if (!accessToken || !clientId || !clientSecret) {
-      return NextResponse.json({ error: "Authorization credentials not configured" }, { status: 500 })
+      return NextResponse.json(
+        { error: "Authorization credentials not configured" }, 
+        { status: 500, headers: corsHeaders }
+      )
     }
 
     // First try with the current access token
@@ -62,7 +70,10 @@ export async function POST(request: Request) {
     const email = requestData.email || requestData.email_address || ""
 
     if (!email) {
-      return NextResponse.json({ error: "Email address is required" }, { status: 400 })
+      return NextResponse.json(
+        { error: "Email address is required" }, 
+        { status: 400, headers: corsHeaders }
+      )
     }
 
     // Allow custom list memberships or use default
@@ -89,7 +100,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ 
         error: "Authorization failed", 
         message: "The access token has expired. Please obtain a new access token."
-      }, { status: 401 });
+      }, { status: 401, headers: corsHeaders });
     }
 
     // Get the response data
@@ -102,11 +113,14 @@ export async function POST(request: Request) {
         status: response.status,
         data: responseData,
       },
-      { status: response.status, headers },
+      { status: response.status, headers: corsHeaders },
     )
   } catch (error) {
     console.error("Error relaying to Constant Contact:", error)
-    return NextResponse.json({ error: "Failed to relay request to Constant Contact" }, { status: 500, headers })
+    return NextResponse.json(
+      { error: "Failed to relay request to Constant Contact" }, 
+      { status: 500, headers: corsHeaders }
+    )
   }
 }
 
