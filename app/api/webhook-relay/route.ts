@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     const requestData = await request.json();
     
     // Use the webhook URL from Zapier
-    const zapierWebhookUrl = process.env.ZAPIER_WEBHOOK_URL; // Add this to your Vercel env vars
+    const zapierWebhookUrl = process.env.ZAPIER_WEBHOOK_URL;
     
     if (!zapierWebhookUrl) {
       return NextResponse.json(
@@ -29,43 +29,79 @@ export async function POST(request: Request) {
     }
     
     // Map list IDs to newsletter names for better readability in Zapier
-    const listIdToName: Record<string, string> = {
+    const listIdToName: { [key: string]: string } = {
       '07936f78-662a-11eb-af0a-fa163e56c9b0': 'The Street Smarts',
       'wellness-wednesdays-list-id': 'Wellness Wednesdays' // Replace with actual list ID
     };
     
-    // Convert list IDs to names
-    const selectedNewsletters = requestData.list_memberships?.map(
-      (listId: string) => listIdToName[listId] || listId
-    ) || [];
+    const listMemberships = requestData.list_memberships || [];
     
-    // Send data to Zapier
-    const response = await fetch(zapierWebhookUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
+    if (listMemberships.length === 0) {
+      return NextResponse.json(
+        { error: "No list memberships provided" },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+    
+    // Make a separate request for each list ID
+    const webhookPromises = listMemberships.map(async (listId: string) => {
+      const newsletterName = listIdToName[listId] || listId;
+      
+      const payload = {
         email: requestData.email,
         name: requestData.name || '',
         source: "Webflow Form",
         timestamp: new Date().toISOString(),
-        list_memberships: requestData.list_memberships || [],
-        selected_newsletters: selectedNewsletters,
+        list_id: listId,
+        newsletter_name: newsletterName,
         permission_to_send: requestData.permission_to_send || "implicit"
-      })
+      };
+      
+      return fetch(zapierWebhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
     });
     
-    if (response.ok) {
+    // Wait for all webhook requests to complete
+    const responses = await Promise.all(webhookPromises);
+    
+    // Check if all requests were successful
+    const failedRequests = responses.filter(response => !response.ok);
+    
+    if (failedRequests.length > 0) {
+      console.error(`${failedRequests.length} webhook requests failed`);
+      
+      // Log details of failed requests
+      for (let i = 0; i < responses.length; i++) {
+        if (!responses[i].ok) {
+          const errorText = await responses[i].text();
+          console.error(`Failed request for list ${listMemberships[i]}:`, errorText);
+        }
+      }
+      
       return NextResponse.json(
-        { success: true, message: "Subscription successful" },
-        { status: 200, headers: corsHeaders }
+        { 
+          error: "Some subscriptions failed", 
+          successful: responses.length - failedRequests.length,
+          failed: failedRequests.length,
+          total: responses.length
+        },
+        { status: 207, headers: corsHeaders } // 207 Multi-Status
       );
-    } else {
-      const errorText = await response.text();
-      console.error('Zapier webhook failed:', errorText);
-      throw new Error(`Webhook failed: ${response.status}`);
     }
+    
+    return NextResponse.json(
+      { 
+        success: true, 
+        message: "All subscriptions successful",
+        subscriptions_processed: responses.length
+      },
+      { status: 200, headers: corsHeaders }
+    );
     
   } catch (error) {
     console.error("Webhook relay error:", error);
