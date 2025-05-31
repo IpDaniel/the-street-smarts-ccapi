@@ -36,17 +36,39 @@
         return;
       }
       
+      // Check which newsletters are selected
+      const selectedLists = [];
+      
+      // Map checkbox names to list IDs
+      const listMapping = {
+        'checkbox-2': '07936f78-662a-11eb-af0a-fa163e56c9b0', // The Street Smarts
+        'checkbox': '07936f78-662a-11eb-af0a-fa163e56c9b0' // Replace with actual Wellness Wednesdays list ID
+      };
+      
+      // Check each checkbox and add corresponding list ID if checked
+      Object.keys(listMapping).forEach(checkboxName => {
+        if (json[checkboxName] === 'on') {
+          selectedLists.push(listMapping[checkboxName]);
+        }
+      });
+      
+      // Ensure at least one newsletter is selected
+      if (selectedLists.length === 0) {
+        alert('Please select at least one newsletter to subscribe to');
+        return;
+      }
+      
       const payload = {
         email: email,
         permission_to_send: "implicit",
-        list_memberships: ["07936f78-662a-11eb-af0a-fa163e56c9b0"],
+        list_memberships: selectedLists,
         create_source: "Webflow Form"
       };
       
       console.log('Sending payload:', payload);
       
       try {
-        const response = await fetch("https://web-form-automation-ccapi.vercel.app/api/constant-contact", {
+        const response = await fetch("https://web-form-automation-ccapi.vercel.app/api/webhook-relay", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
