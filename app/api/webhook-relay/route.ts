@@ -37,8 +37,10 @@ export async function POST(request: Request) {
       );
     }
     
-    // Make a separate request for each list ID
-    const webhookPromises = listMemberships.map(async (listId: string) => {
+    // Make requests sequentially with a small delay
+    const responses = [];
+    for (let i = 0; i < listMemberships.length; i++) {
+      const listId = listMemberships[i];
       const payload = {
         email: requestData.email,
         name: requestData.name || '',
@@ -48,17 +50,21 @@ export async function POST(request: Request) {
         permission_to_send: requestData.permission_to_send || "implicit"
       };
       
-      return fetch(zapierWebhookUrl, {
+      const response = await fetch(zapierWebhookUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify(payload)
       });
-    });
-    
-    // Wait for all webhook requests to complete
-    const responses = await Promise.all(webhookPromises);
+      
+      responses.push(response);
+      
+      // Add a small delay between requests (except for the last one)
+      if (i < listMemberships.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay
+      }
+    }
     
     // Check if all requests were successful
     const failedRequests = responses.filter(response => !response.ok);
