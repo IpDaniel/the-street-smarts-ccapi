@@ -41,8 +41,8 @@
       
       // Map checkbox names to list IDs
       const listMapping = {
-        'checkbox-2': '07936f78-662a-11eb-af0a-fa163e56c9b0', // The Street Smarts
-        'checkbox': '07936f78-662a-11eb-af0a-fa163e56c9b0' // Replace with actual Wellness Wednesdays list ID
+        'checkbox-2': '07936f78-662a-11eb-af0a-fa163e56c9b0', // The Street Smarts (Currently developer testing)
+        'checkbox': '08f1a4d4-3e7a-11f0-95a3-fa163ed05402' // Replace with actual Wellness Wednesdays list ID (currently developer testing 2)
       };
       
       // Check each checkbox and add corresponding list ID if checked

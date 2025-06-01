@@ -28,12 +28,6 @@ export async function POST(request: Request) {
       );
     }
     
-    // Map list IDs to newsletter names for better readability in Zapier
-    const listIdToName: { [key: string]: string } = {
-      '07936f78-662a-11eb-af0a-fa163e56c9b0': 'The Street Smarts',
-      'wellness-wednesdays-list-id': 'Wellness Wednesdays' // Replace with actual list ID
-    };
-    
     const listMemberships = requestData.list_memberships || [];
     
     if (listMemberships.length === 0) {
@@ -45,15 +39,12 @@ export async function POST(request: Request) {
     
     // Make a separate request for each list ID
     const webhookPromises = listMemberships.map(async (listId: string) => {
-      const newsletterName = listIdToName[listId] || listId;
-      
       const payload = {
         email: requestData.email,
         name: requestData.name || '',
         source: "Webflow Form",
         timestamp: new Date().toISOString(),
         list_id: listId,
-        newsletter_name: newsletterName,
         permission_to_send: requestData.permission_to_send || "implicit"
       };
       
